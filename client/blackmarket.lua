@@ -4,6 +4,7 @@
 
 local blackMarketPed = nil
 local blackMarketTargetAdded = false
+local dealerState = nil
 
 -- =============================================================================
 -- UTILITY FUNCTIONS
@@ -23,6 +24,35 @@ end
 local function GetStreetCred()
     local cred = lib.callback.await('blackmarket:server:getCred', false)
     return BMInteger(cred, 0)
+end
+
+local function NormalizeDealerLocation(location)
+    if not location or not location.x or not location.y or not location.z then
+        return nil
+    end
+
+    return {
+        index = BMInteger(location.index, 0),
+        label = BMString(location.label, 'Unknown'),
+        x = BMNumber(location.x, 0.0),
+        y = BMNumber(location.y, 0.0),
+        z = BMNumber(location.z, 0.0),
+        w = BMNumber(location.w, 0.0)
+    }
+end
+
+local function IsSameDealerLocation(a, b)
+    if not a or not b then
+        return a == b
+    end
+
+    if BMInteger(a.index, 0) > 0 and BMInteger(b.index, 0) > 0 then
+        return BMInteger(a.index, 0) == BMInteger(b.index, 0)
+    end
+
+    return math.abs(BMNumber(a.x, 0.0) - BMNumber(b.x, 0.0)) < 0.1
+        and math.abs(BMNumber(a.y, 0.0) - BMNumber(b.y, 0.0)) < 0.1
+        and math.abs(BMNumber(a.z, 0.0) - BMNumber(b.z, 0.0)) < 0.1
 end
 
 local function LoadPedModel(model, timeout)
@@ -78,6 +108,46 @@ local function DeleteBlackMarketPed()
     blackMarketTargetAdded = false
 end
 
+local function RefreshDealerState()
+    local previousLocation = dealerState and dealerState.location or nil
+    local ok, state = pcall(function()
+        return lib.callback.await('blackmarket:server:getDealerState', false)
+    end)
+
+    if not ok or type(state) ~= 'table' then
+        local fallback = Config.BlackMarket and Config.BlackMarket.coords
+        state = {
+            open = true,
+            location = fallback and {
+                index = 1,
+                label = 'Fallback dealer',
+                x = fallback.x,
+                y = fallback.y,
+                z = fallback.z,
+                w = fallback.w
+            } or nil,
+            closedMessage = 'Dealer is not available right now.'
+        }
+    end
+
+    state.location = NormalizeDealerLocation(state.location)
+    dealerState = state
+
+    if not state.open or not state.location or not IsSameDealerLocation(previousLocation, state.location) then
+        DeleteBlackMarketPed()
+    end
+
+    return dealerState
+end
+
+local function GetActiveDealerLocation()
+    if not dealerState or not dealerState.open then
+        return nil
+    end
+
+    return dealerState.location
+end
+
 -- =============================================================================
 -- BLACK MARKET NPC SPAWNING
 -- =============================================================================
@@ -88,7 +158,11 @@ local function CreateBlackMarketPed()
     end
 
     local marketConfig = Config.BlackMarket or {}
-    local coords = marketConfig.coords
+    if not dealerState or not dealerState.open then
+        RefreshDealerState()
+    end
+
+    local coords = GetActiveDealerLocation()
     local model = marketConfig.npcModel
     local npcSettings = type(marketConfig.npc) == 'table' and marketConfig.npc or {}
 
@@ -170,7 +244,7 @@ local function SetDisguiseState(active)
 end
 
 local function IsNearBlackMarket(radius)
-    local coords = Config.BlackMarket and Config.BlackMarket.coords
+    local coords = GetActiveDealerLocation()
     if not coords then return false end
 
     local playerCoords = GetEntityCoords(PlayerPedId())
@@ -182,6 +256,12 @@ end
 -- =============================================================================
 
 function OpenBlackMarketMenu()
+    local state = RefreshDealerState()
+    if not state.open then
+        Notify('Black Market', BMString(state.closedMessage, 'Dealer is not available right now.'), 'error')
+        return
+    end
+
     local cred = GetStreetCred()
     local items = lib.callback.await('blackmarket:server:getItems', false)
     
@@ -366,18 +446,35 @@ RegisterNetEvent('blackmarket:client:notify', function(title, message, type)
     Notify(title, message, type)
 end)
 
+RegisterNetEvent('blackmarket:client:dealerStateChanged', function(state)
+    local previousLocation = dealerState and dealerState.location or nil
+    state = type(state) == 'table' and state or { open = false }
+    state.location = NormalizeDealerLocation(state.location)
+    dealerState = state
+
+    if not state.open or not state.location or not IsSameDealerLocation(previousLocation, state.location) then
+        DeleteBlackMarketPed()
+    end
+
+    if state.open and state.location then
+        CreateBlackMarketPed()
+    end
+end)
+
 -- =============================================================================
 -- INITIALIZATION
 -- =============================================================================
 
 CreateThread(function()
     Wait(1000)
+    RefreshDealerState()
     CreateBlackMarketPed()
 
     while true do
         Wait(15000)
+        local state = RefreshDealerState()
 
-        if not blackMarketPed or not DoesEntityExist(blackMarketPed) then
+        if state.open and state.location and (not blackMarketPed or not DoesEntityExist(blackMarketPed)) then
             blackMarketPed = nil
             blackMarketTargetAdded = false
             CreateBlackMarketPed()

@@ -7,6 +7,13 @@ Config = {}
 Config.BlackMarket = {
     -- Secret location coordinates
     coords = vector4(713.84, -967.71, 30.40, 267.75), -- Hidden La Mesa warehouse back door
+    locations = {
+        { label = 'La Mesa warehouse', coords = vector4(713.84, -967.71, 30.40, 267.75) },
+        { label = 'Cypress storage yard', coords = vector4(978.11, -147.02, 74.24, 59.25) },
+        { label = 'Davis back alley', coords = vector4(169.82, -1799.31, 29.31, 321.0) },
+        { label = 'La Puerta scrapyard', coords = vector4(-430.12, -1728.38, 19.78, 252.0) },
+        { label = 'Vespucci service lane', coords = vector4(-1148.24, -1523.49, 10.63, 305.5) }
+    },
     npcModel = `g_m_m_chicold_01`, -- Gang member model
     targetDistance = 2.5,
     serverValidationDistance = 5.0, -- Server-side anti-cheat distance for buy/sell events
@@ -22,6 +29,27 @@ Config.BlackMarket = {
         color = 1,
         scale = 0.8,
         name = '???'
+    }
+}
+
+-- =============================================================================
+-- DEALER SCHEDULE
+-- =============================================================================
+
+Config.DealerSchedule = {
+    enabled = true,
+    useServerTime = true, -- true = real server hour, false = GTA clock when available
+    checkInterval = 60, -- seconds
+    rotationInterval = 60, -- minutes while open
+    rotateLocationOnOpen = true,
+    closedMessage = 'Dealer is laying low. Come back at night.',
+    openHours = {
+        { start = 20, stop = 6 } -- 8 PM to 6 AM
+    },
+    timeModifiers = {
+        { start = 20, stop = 23, priceMultiplier = 1.10, stockMultiplier = 1.00 },
+        { start = 23, stop = 3, priceMultiplier = 1.25, stockMultiplier = 0.80 },
+        { start = 3, stop = 6, priceMultiplier = 1.15, stockMultiplier = 0.65 }
     }
 }
 
@@ -314,6 +342,48 @@ Config.Police = {
         dangerDetected = 'WARNING: Police activity detected nearby!',
         tradeCancelled = 'Trade cancelled due to police presence.',
         safeToTrade = 'Area appears clear.'
+    }
+}
+
+-- =============================================================================
+-- DISPATCH INTEGRATION
+-- =============================================================================
+
+Config.Dispatch = {
+    enabled = true,
+    provider = 'auto', -- auto, ps-dispatch, cd_dispatch, core_dispatch, custom, none
+    cooldown = 120, -- seconds between black market alerts
+    locationFuzzRadius = 85.0, -- meters; dispatch receives an area, not exact dealer spot
+    jobs = { 'police', 'sheriff' },
+    jobTypes = { 'leo' }, -- ps-dispatch commonly uses job type entries
+    customEvent = nil,
+    customEventIsServer = false,
+    blip = {
+        sprite = 66,
+        colour = 1,
+        color = 1,
+        scale = 1.2,
+        time = 5,
+        radius = 80,
+        flashes = false
+    },
+    alerts = {
+        purchase = {
+            chance = 25,
+            code = '10-66',
+            codeName = 'blackmarket_purchase',
+            title = 'Suspicious Exchange',
+            message = 'Possible underground market activity reported nearby.',
+            priority = 2
+        },
+        trade = {
+            chance = 35,
+            code = '10-66',
+            codeName = 'blackmarket_trade',
+            title = 'Suspicious Handoff',
+            message = 'Possible illegal handoff reported nearby.',
+            priority = 2
+        }
     }
 }
 

@@ -60,7 +60,10 @@ local function GetRandomStock(item)
         maxStock = minStock
     end
 
-    return math.random(minStock, maxStock)
+    local stock = math.random(minStock, maxStock)
+    local multiplier = type(GetBlackMarketStockMultiplier) == 'function' and GetBlackMarketStockMultiplier() or 1.0
+
+    return math.floor(Clamp(stock * multiplier, minStock, maxStock))
 end
 
 local function GetRandomizedPrice(item)
@@ -90,6 +93,10 @@ local function GetSupplyAdjustedPrice(item)
         price = math.floor(price * BMNumber(stockConfig.demandMultiplier, 1.5))
     elseif stockRatio >= 0.75 then
         price = math.floor(price * BMNumber(stockConfig.supplyMultiplier, 0.8))
+    end
+
+    if type(GetBlackMarketPriceMultiplier) == 'function' then
+        price = math.floor(price * GetBlackMarketPriceMultiplier())
     end
 
     return Clamp(price, item.minPrice, item.maxPrice)

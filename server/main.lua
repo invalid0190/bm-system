@@ -9,14 +9,23 @@ local function NotifyClient(playerId, title, message, notifyType)
 end
 
 local function GetBlackMarketCoords()
-    local coords = Config.BlackMarket and Config.BlackMarket.coords
-    if not coords then return nil end
+    if type(GetCurrentDealerCoords) == 'function' then
+        local coords = GetCurrentDealerCoords()
+        if coords then return coords end
+    end
 
-    return vector3(coords.x, coords.y, coords.z)
+    local fallback = Config.BlackMarket and Config.BlackMarket.coords
+    if not fallback then return nil end
+
+    return vector3(fallback.x, fallback.y, fallback.z)
 end
 
 -- Server-side location validation blocks spoofed buy/sell events from across the map.
 local function IsPlayerNearBlackMarket(playerId, radiusOverride)
+    if type(IsBlackMarketOpen) == 'function' and not IsBlackMarketOpen() then
+        return false
+    end
+
     local marketCoords = GetBlackMarketCoords()
     if not marketCoords then return false end
 
@@ -53,6 +62,10 @@ lib.callback.register('blackmarket:server:getCred', function(source)
 end)
 
 lib.callback.register('blackmarket:server:getItems', function(source)
+    if type(IsBlackMarketOpen) == 'function' and not IsBlackMarketOpen() then
+        return {}
+    end
+
     return GetShopItems()
 end)
 
@@ -93,6 +106,12 @@ RegisterNetEvent('blackmarket:server:buyItem', function(itemName, quantity)
     local playerId = source
     itemName = BMString(itemName)
     quantity = BMInteger(quantity, 1)
+
+    if type(IsBlackMarketOpen) == 'function' and not IsBlackMarketOpen() then
+        local schedule = Config.DealerSchedule or {}
+        NotifyClient(playerId, 'Black Market', BMString(schedule.closedMessage, 'Dealer is not available right now.'), 'error')
+        return
+    end
 
     if not IsPlayerNearBlackMarket(playerId) then
         BMLog('WARN', 'Blocked remote purchase attempt from %s (%d)', BMString(GetPlayerName(playerId), 'Unknown'), playerId)
@@ -187,6 +206,14 @@ RegisterNetEvent('blackmarket:server:buyItem', function(itemName, quantity)
     
     -- Notify player
     NotifyClient(playerId, 'Black Market', string.format('Purchased %dx %s for $%d', quantity, BMString(itemData.label, itemName), totalPrice), 'success')
+
+    if type(TryBlackMarketDispatch) == 'function' then
+        TryBlackMarketDispatch(playerId, 'purchase', {
+            item = itemName,
+            quantity = quantity,
+            price = totalPrice
+        })
+    end
     
     if Config.Debug then
         BMLog('DEBUG', '%s bought %dx %s for $%d', BMString(GetPlayerName(playerId), 'Unknown'), quantity, BMString(itemName, 'unknown'), totalPrice)
@@ -235,6 +262,12 @@ RegisterNetEvent('blackmarket:server:sellItem', function(itemName, quantity)
     local playerId = source
     itemName = BMString(itemName)
     quantity = BMInteger(quantity, 1)
+
+    if type(IsBlackMarketOpen) == 'function' and not IsBlackMarketOpen() then
+        local schedule = Config.DealerSchedule or {}
+        NotifyClient(playerId, 'Black Market', BMString(schedule.closedMessage, 'Dealer is not available right now.'), 'error')
+        return
+    end
 
     if not IsPlayerNearBlackMarket(playerId) then
         BMLog('WARN', 'Blocked remote sale attempt from %s (%d)', BMString(GetPlayerName(playerId), 'Unknown'), playerId)

@@ -541,6 +541,14 @@ function ExecuteTrade(trade)
         player2Id = trade.player2,
         itemsSummary = table.concat(itemsSummary, ', ')
     })
+
+    if type(TryBlackMarketDispatch) == 'function' then
+        TryBlackMarketDispatch(trade.player1, 'trade', {
+            player1 = trade.player1,
+            player2 = trade.player2,
+            itemsSummary = table.concat(itemsSummary, ', ')
+        })
+    end
     
     -- Notify both players
     TriggerClientEvent('blackmarket:client:tradeComplete', trade.player1, 
