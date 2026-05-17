@@ -54,6 +54,67 @@ Config.DealerSchedule = {
 }
 
 -- =============================================================================
+-- DEALER TRUST DIALOGUE
+-- =============================================================================
+
+Config.DealerDialogue = {
+    enabled = true,
+    showInMainMenu = true,
+    fallbackLine = "Keep it quiet. I do business with people who know how to listen.",
+    noStockLine = "Nothing worth moving right now. Come back after the next restock.",
+    levels = {
+        {
+            minCred = 0,
+            lines = {
+                "I do not know you yet. Keep it simple and do not waste my time.",
+                "New face, small steps. Earn trust before asking for anything serious.",
+                "Cash talks, reputation keeps the door open."
+            }
+        },
+        {
+            minCred = 10,
+            lines = {
+                "You have been around enough. Do not make me regret remembering your name.",
+                "Your name is starting to move quietly. Keep it clean.",
+                "Small trust is still trust. Handle your business properly."
+            }
+        },
+        {
+            minCred = 25,
+            lines = {
+                "People say you finish what you start. That matters here.",
+                "I can work with you, but heat follows sloppy moves.",
+                "You are not unknown anymore. That can help or hurt."
+            }
+        },
+        {
+            minCred = 50,
+            lines = {
+                "You have earned better access. Do not bring attention to my door.",
+                "Reliable people get better prices. Reliable people also stay quiet.",
+                "I saved a few options for someone with your record."
+            }
+        },
+        {
+            minCred = 75,
+            lines = {
+                "You are trusted here. That means mistakes cost more.",
+                "Word is you handle pressure. Let us keep it that way.",
+                "High trust opens doors, but it also raises expectations."
+            }
+        },
+        {
+            minCred = 90,
+            lines = {
+                "You are one of the few I do not need to warn twice.",
+                "Top shelf access, quiet hands, no loose ends.",
+                "You know the rules already. Move smart and leave clean."
+            }
+        }
+    }
+}
+
+-- =============================================================================
 -- ILLEGAL ITEMS FOR SALE
 -- =============================================================================
 

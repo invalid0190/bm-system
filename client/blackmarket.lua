@@ -148,6 +148,33 @@ local function GetActiveDealerLocation()
     return dealerState.location
 end
 
+-- Selects a short dealer line based on the player's current street cred.
+local function GetDealerDialogue(cred, availableItemCount)
+    local dialogueConfig = Config.DealerDialogue or {}
+    if not dialogueConfig.enabled then
+        return nil
+    end
+
+    if BMInteger(availableItemCount, 0) <= 0 and dialogueConfig.noStockLine then
+        return BMString(dialogueConfig.noStockLine)
+    end
+
+    local selectedLevel = nil
+    local levels = type(dialogueConfig.levels) == 'table' and dialogueConfig.levels or {}
+    for _, level in ipairs(levels) do
+        if cred >= BMInteger(level.minCred, 0) then
+            selectedLevel = level
+        end
+    end
+
+    local lines = selectedLevel and type(selectedLevel.lines) == 'table' and selectedLevel.lines or {}
+    if #lines > 0 then
+        return BMString(lines[math.random(1, #lines)], dialogueConfig.fallbackLine)
+    end
+
+    return BMString(dialogueConfig.fallbackLine)
+end
+
 -- =============================================================================
 -- BLACK MARKET NPC SPAWNING
 -- =============================================================================
@@ -277,6 +304,7 @@ function OpenBlackMarketMenu()
         stolen = { label = 'Stolen Goods', icon = 'mask', items = {} },
         contraband = { label = 'Contraband', icon = 'box', items = {} }
     }
+    local availableItemCount = 0
     
     for _, item in ipairs(items) do
         local stock = BMInteger(item.stock, 0)
@@ -310,6 +338,7 @@ function OpenBlackMarketMenu()
                         OpenPurchaseMenu(menuItem)
                     end
                 })
+                availableItemCount = availableItemCount + 1
             end
         end
     end
@@ -320,9 +349,24 @@ function OpenBlackMarketMenu()
         title = 'Black Market',
         options = {}
     }
+
+    local dialogueConfig = Config.DealerDialogue or {}
+    if dialogueConfig.showInMainMenu ~= false then
+        local dealerLine = GetDealerDialogue(cred, availableItemCount)
+        if dealerLine and dealerLine ~= '' then
+            table.insert(mainMenu.options, {
+                title = 'Dealer',
+                description = dealerLine,
+                icon = 'comment-dots',
+                disabled = true
+            })
+        end
+    end
     
+    local categoryCount = 0
     for catName, catData in pairs(categories) do
         if #catData.items > 0 then
+            categoryCount = categoryCount + 1
             table.insert(mainMenu.options, {
                 title = catData.label,
                 icon = catData.icon,
@@ -332,7 +376,7 @@ function OpenBlackMarketMenu()
         end
     end
 
-    if #mainMenu.options == 0 then
+    if categoryCount == 0 then
         table.insert(mainMenu.options, {
             title = 'No stock available',
             description = 'The supplier has nothing for sale right now.',
