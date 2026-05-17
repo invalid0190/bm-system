@@ -18,38 +18,50 @@ end
 local function CopyItemConfig(item)
     return {
         name = item.name,
-        label = item.label,
-        category = item.category,
-        basePrice = item.basePrice,
-        minPrice = item.minPrice,
-        maxPrice = item.maxPrice,
-        baseStock = item.baseStock,
-        minStock = item.minStock,
-        maxStock = item.maxStock,
-        requiredCred = item.requiredCred,
-        priceVariance = item.priceVariance,
-        stock = item.baseStock,
-        currentPrice = item.basePrice,
+        label = item.label or item.name,
+        category = item.category or 'contraband',
+        basePrice = tonumber(item.basePrice) or 0,
+        minPrice = tonumber(item.minPrice) or tonumber(item.basePrice) or 0,
+        maxPrice = tonumber(item.maxPrice) or tonumber(item.basePrice) or 0,
+        baseStock = tonumber(item.baseStock) or 0,
+        minStock = tonumber(item.minStock) or 0,
+        maxStock = tonumber(item.maxStock) or tonumber(item.baseStock) or 0,
+        requiredCred = tonumber(item.requiredCred) or 0,
+        priceVariance = tonumber(item.priceVariance) or 0,
+        stock = tonumber(item.baseStock) or 0,
+        currentPrice = tonumber(item.basePrice) or 0,
         lastPriceUpdate = os.time()
     }
 end
 
 local function GetRandomStock(item)
-    return math.random(item.minStock or 0, item.maxStock or item.baseStock or 1)
+    local minStock = tonumber(item.minStock) or 0
+    local maxStock = tonumber(item.maxStock) or tonumber(item.baseStock) or minStock
+
+    if maxStock < minStock then
+        maxStock = minStock
+    end
+
+    return math.random(minStock, maxStock)
 end
 
 local function GetRandomizedPrice(item)
-    local variance = item.priceVariance or 0
+    local variance = tonumber(item.priceVariance) or 0
     local minMultiplier = math.floor((1.0 - variance) * 100)
     local maxMultiplier = math.floor((1.0 + variance) * 100)
     local multiplier = math.random(minMultiplier, maxMultiplier) / 100
+    local basePrice = tonumber(item.basePrice) or 0
+    local minPrice = tonumber(item.minPrice) or basePrice
+    local maxPrice = tonumber(item.maxPrice) or basePrice
 
-    return Clamp(math.floor(item.basePrice * multiplier), item.minPrice, item.maxPrice)
+    return Clamp(math.floor(basePrice * multiplier), minPrice, maxPrice)
 end
 
 local function GetSupplyAdjustedPrice(item)
     local price = GetRandomizedPrice(item)
-    local stockRatio = item.maxStock > 0 and (item.stock / item.maxStock) or 1
+    local maxStock = tonumber(item.maxStock) or 0
+    local stock = tonumber(item.stock) or 0
+    local stockRatio = maxStock > 0 and (stock / maxStock) or 1
 
     if stockRatio <= 0.25 then
         price = math.floor(price * Config.Stock.demandMultiplier)

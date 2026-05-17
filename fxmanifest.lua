@@ -15,6 +15,7 @@ dependencies {
 }
 
 shared_scripts {
+    '@ox_lib/init.lua',
     'config.lua',
     'shared/main.lua'
 }
@@ -26,7 +27,6 @@ client_scripts {
 }
 
 server_scripts {
-    '@ox_lib/init.lua',
     'server/logs.lua',
     'server/stock.lua',
     'server/reputation.lua',

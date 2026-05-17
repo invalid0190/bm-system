@@ -62,7 +62,7 @@ local function CreateBlackMarketPed()
             label = 'Check Street Cred',
             distance = 2.5,
             onSelect = function()
-                local cred = GetStreetCred()
+                local cred = tonumber(GetStreetCred()) or 0
                 Notify('Street Cred', string.format('Your reputation: %d/100', cred), 'inform')
             end
         }
@@ -76,7 +76,7 @@ end
 -- =============================================================================
 
 function OpenBlackMarketMenu()
-    local cred = GetStreetCred()
+    local cred = tonumber(GetStreetCred()) or 0
     local items = lib.callback.await('blackmarket:server:getItems', false)
     
     if not items then
@@ -93,23 +93,35 @@ function OpenBlackMarketMenu()
     }
     
     for _, item in ipairs(items) do
-        if item.stock > 0 then
-            local cat = categories[item.category]
+        local stock = tonumber(item.stock) or 0
+        local requiredCred = tonumber(item.requiredCred) or 0
+        local currentPrice = tonumber(item.currentPrice or item.basePrice) or 0
+        local category = item.category or 'contraband'
+
+        if stock > 0 then
+            local cat = categories[category]
             if cat then
-                local price = item.currentPrice
-                local desc = string.format('Stock: %d | Price: $%d', item.stock, price)
+                local menuItem = {
+                    name = item.name,
+                    label = item.label or item.name,
+                    category = category,
+                    stock = stock,
+                    currentPrice = currentPrice,
+                    requiredCred = requiredCred
+                }
+                local desc = string.format('Stock: %d | Price: $%d', stock, currentPrice)
                 
-                if item.requiredCred > cred then
-                    desc = string.format('LOCKED - Need %d cred', item.requiredCred)
+                if requiredCred > cred then
+                    desc = string.format('LOCKED - Need %d cred', requiredCred)
                 end
                 
                 table.insert(cat.items, {
-                    title = item.label,
+                    title = menuItem.label,
                     description = desc,
-                    icon = item.category == 'weapons' and 'gun' or (item.category == 'drugs' and 'pills' or 'box'),
-                    disabled = item.requiredCred > cred,
+                    icon = category == 'weapons' and 'gun' or (category == 'drugs' and 'pills' or 'box'),
+                    disabled = requiredCred > cred,
                     onSelect = function()
-                        OpenPurchaseMenu(item)
+                        OpenPurchaseMenu(menuItem)
                     end
                 })
             end
@@ -151,13 +163,14 @@ function OpenBlackMarketMenu()
 end
 
 function OpenPurchaseMenu(item)
-    local cred = GetStreetCred()
-    local price = item.currentPrice
+    local cred = tonumber(GetStreetCred()) or 0
+    local stock = tonumber(item.stock) or 0
+    local price = tonumber(item.currentPrice) or 0
     
     -- Apply reputation discount
     for _, mod in ipairs(Config.Reputation.priceModifiers) do
         if cred >= mod.minCred then
-            price = math.floor(item.currentPrice * mod.modifier)
+            price = math.floor((tonumber(item.currentPrice) or 0) * mod.modifier)
         end
     end
     
@@ -167,7 +180,7 @@ function OpenPurchaseMenu(item)
         options = {
             {
                 title = 'Purchase',
-                description = string.format('Buy 1 for $%d (Stock: %d)', price, item.stock),
+                description = string.format('Buy 1 for $%d (Stock: %d)', price, stock),
                 icon = 'cart-shopping',
                 onSelect = function()
                     TriggerServerEvent('blackmarket:server:buyItem', item.name, 1)
@@ -179,7 +192,7 @@ function OpenPurchaseMenu(item)
                 icon = 'boxes-stacked',
                 onSelect = function()
                     local input = lib.inputDialog('Purchase Quantity', {
-                        { type = 'number', label = 'Quantity', default = 1, min = 1, max = item.stock }
+                        { type = 'number', label = 'Quantity', default = 1, min = 1, max = stock }
                     })
                     
                     if input then
@@ -210,7 +223,7 @@ RegisterCommand('blackmarket', function()
 end, false)
 
 RegisterCommand('mycred', function()
-    local cred = GetStreetCred()
+    local cred = tonumber(GetStreetCred()) or 0
     Notify('Street Cred', string.format('Your reputation: %d/100', cred), 'inform')
 end, false)
 
