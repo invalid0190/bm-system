@@ -248,6 +248,7 @@ Core dependencies:
 
 - ox_lib by Overextended
 
-Preview: https://r2.fivemanage.com/P7y9eTE8cCknS7gpxfED8/bm-system.mp4
 - ox_target by Overextended
 - ox_inventory by Overextended
+
+Preview: https://r2.fivemanage.com/P7y9eTE8cCknS7gpxfED8/bm-system.mp4
