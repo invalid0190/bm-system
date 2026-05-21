@@ -266,3 +266,4 @@ Core dependencies:
 - ox_inventory by Overextended
 
 Preview: https://r2.fivemanage.com/P7y9eTE8cCknS7gpxfED8/bm-system.mp4
+Propr Preview: https://r2.fivemanage.com/P7y9eTE8cCknS7gpxfED8/bm-system_props.mp4
