@@ -5,6 +5,12 @@
 local blackMarketPed = nil
 local blackMarketTargetAdded = false
 local dealerState = nil
+local shopCrate = nil
+local purchaseProp = nil
+local crateMonitorActive = false
+local DeleteShopCrate
+local DeletePurchaseProp
+local IsNearBlackMarket
 
 -- =============================================================================
 -- UTILITY FUNCTIONS
@@ -94,6 +100,10 @@ local function GetSafeSpawnCoords(coords, attempts)
 end
 
 local function DeleteBlackMarketPed()
+    if DeleteShopCrate then
+        DeleteShopCrate()
+    end
+
     if blackMarketPed and DoesEntityExist(blackMarketPed) then
         if blackMarketTargetAdded then
             pcall(function()
@@ -173,6 +183,192 @@ local function GetDealerDialogue(cred, availableItemCount)
     end
 
     return BMString(dialogueConfig.fallbackLine)
+end
+
+local function GetDealerPropCoords(forwardOffset, sideOffset)
+    local coords = GetActiveDealerLocation()
+    if not coords then
+        return nil, 0.0
+    end
+
+    local baseCoords = blackMarketPed and DoesEntityExist(blackMarketPed)
+        and GetEntityCoords(blackMarketPed)
+        or vector3(coords.x, coords.y, coords.z)
+    local heading = blackMarketPed and DoesEntityExist(blackMarketPed)
+        and GetEntityHeading(blackMarketPed)
+        or BMNumber(coords.w, 0.0)
+
+    local radians = math.rad(heading)
+    local forward = vector3(-math.sin(radians), math.cos(radians), 0.0)
+    local right = vector3(math.cos(radians), math.sin(radians), 0.0)
+
+    return baseCoords
+        + (forward * BMNumber(forwardOffset, 0.0))
+        + (right * BMNumber(sideOffset, 0.0)), heading
+end
+
+DeleteShopCrate = function()
+    if shopCrate and DoesEntityExist(shopCrate) then
+        if type(BMPropSystem) == 'table' and type(BMPropSystem.DeleteProp) == 'function' then
+            BMPropSystem.DeleteProp(shopCrate, false)
+        else
+            DeleteEntity(shopCrate)
+        end
+    end
+
+    shopCrate = nil
+end
+
+DeletePurchaseProp = function()
+    if purchaseProp and DoesEntityExist(purchaseProp) then
+        if type(BMPropSystem) == 'table' and type(BMPropSystem.DeleteProp) == 'function' then
+            BMPropSystem.DeleteProp(purchaseProp, false)
+        else
+            DeleteEntity(purchaseProp)
+        end
+    end
+
+    purchaseProp = nil
+end
+
+local function StartShopCrateMonitor()
+    if crateMonitorActive then
+        return
+    end
+
+    crateMonitorActive = true
+    CreateThread(function()
+        while shopCrate and DoesEntityExist(shopCrate) do
+            local propsConfig = Config.Props or {}
+            local crateConfig = type(propsConfig.shopCrate) == 'table' and propsConfig.shopCrate or {}
+            local removeDistance = BMNumber(crateConfig.removeDistance, 8.0)
+
+            if not IsNearBlackMarket(removeDistance) then
+                DeleteShopCrate()
+                break
+            end
+
+            Wait(1000)
+        end
+
+        crateMonitorActive = false
+    end)
+end
+
+local function SpawnShopCrate()
+    local propsConfig = Config.Props or {}
+    local crateConfig = type(propsConfig.shopCrate) == 'table' and propsConfig.shopCrate or {}
+
+    if propsConfig.enabled == false or crateConfig.enabled == false or shopCrate and DoesEntityExist(shopCrate) then
+        return
+    end
+
+    local coords, heading = GetDealerPropCoords(crateConfig.forwardOffset, crateConfig.sideOffset)
+    if not coords or type(BMPropSystem) ~= 'table' or type(BMPropSystem.CreateGroundProp) ~= 'function' then
+        return
+    end
+
+    shopCrate = BMPropSystem.CreateGroundProp(crateConfig.model, coords, heading, 'Loading shop crate...')
+    StartShopCrateMonitor()
+end
+
+local function GetPurchasePropModel(category)
+    local propsConfig = Config.Props or {}
+    local purchaseConfig = type(propsConfig.purchase) == 'table' and propsConfig.purchase or {}
+    category = BMString(category, '')
+
+    if category == 'weapons' then
+        return purchaseConfig.weaponModel
+    end
+
+    local stashCategories = type(purchaseConfig.stashCategories) == 'table' and purchaseConfig.stashCategories or {}
+    if stashCategories[category] == true then
+        return purchaseConfig.stashModel
+    end
+
+    return nil
+end
+
+local function SpawnPurchaseProp(category)
+    local propsConfig = Config.Props or {}
+    local purchaseConfig = type(propsConfig.purchase) == 'table' and propsConfig.purchase or {}
+
+    if propsConfig.enabled == false
+        or purchaseConfig.enabled == false
+        or type(BMPropSystem) ~= 'table'
+        or type(BMPropSystem.CreateGroundProp) ~= 'function' then
+        return
+    end
+
+    DeletePurchaseProp()
+
+    local model = GetPurchasePropModel(category)
+    if not model then
+        return
+    end
+
+    local coords, heading = GetDealerPropCoords(purchaseConfig.forwardOffset, purchaseConfig.sideOffset)
+    if not coords then
+        return
+    end
+
+    purchaseProp = BMPropSystem.CreateGroundProp(model, coords, heading, 'Loading purchase prop...')
+end
+
+local function PlayPurchaseAnimation(duration)
+    local dict = 'mp_common'
+    local anim = 'givetake1_a'
+
+    RequestAnimDict(dict)
+    local startedAt = GetGameTimer()
+    while not HasAnimDictLoaded(dict) and GetGameTimer() - startedAt <= 1500 do
+        Wait(25)
+    end
+
+    if HasAnimDictLoaded(dict) then
+        TaskPlayAnim(PlayerPedId(), dict, anim, 8.0, -8.0, BMInteger(duration, 2500), 48, 0.0, false, false, false)
+    end
+end
+
+local function RunPurchaseSequence(item, quantity)
+    quantity = BMInteger(quantity, 1)
+    if not item or not item.name or quantity <= 0 then
+        Notify('Black Market', 'Invalid purchase.', 'error')
+        return
+    end
+
+    local propsConfig = Config.Props or {}
+    local purchaseConfig = type(propsConfig.purchase) == 'table' and propsConfig.purchase or {}
+    local duration = BMInteger(purchaseConfig.duration, 2500)
+
+    SpawnPurchaseProp(item.category)
+    PlayPurchaseAnimation(duration)
+
+    local completed = true
+    if type(lib) == 'table' and type(lib.progressBar) == 'function' and duration > 0 then
+        completed = lib.progressBar({
+            duration = duration,
+            label = BMString(purchaseConfig.label, 'Completing the exchange...'),
+            canCancel = true,
+            disable = {
+                move = true,
+                car = true,
+                combat = true
+            }
+        })
+    elseif duration > 0 then
+        Wait(duration)
+    end
+
+    ClearPedTasks(PlayerPedId())
+    DeletePurchaseProp()
+
+    if completed == false then
+        Notify('Black Market', 'Exchange cancelled.', 'error')
+        return
+    end
+
+    TriggerServerEvent('blackmarket:server:buyItem', item.name, quantity)
 end
 
 -- =============================================================================
@@ -270,7 +466,7 @@ local function SetDisguiseState(active)
     TriggerServerEvent('blackmarket:server:setDisguise', active)
 end
 
-local function IsNearBlackMarket(radius)
+IsNearBlackMarket = function(radius)
     local coords = GetActiveDealerLocation()
     if not coords then return false end
 
@@ -296,6 +492,8 @@ function OpenBlackMarketMenu()
         Notify('Black Market', 'Unable to connect to supplier.', 'error')
         return
     end
+
+    SpawnShopCrate()
     
     -- Build category menus
     local categories = {
@@ -429,7 +627,7 @@ function OpenPurchaseMenu(item)
                 description = string.format('Buy 1 for $%d (Stock: %d)', price, stock),
                 icon = 'cart-shopping',
                 onSelect = function()
-                    TriggerServerEvent('blackmarket:server:buyItem', item.name, 1)
+                    RunPurchaseSequence(item, 1)
                 end
             },
             {
@@ -444,7 +642,7 @@ function OpenPurchaseMenu(item)
                     if input then
                         local qty = BMInteger(input[1], 1)
                         qty = math.max(1, math.min(qty, stock))
-                        TriggerServerEvent('blackmarket:server:buyItem', item.name, qty)
+                        RunPurchaseSequence(item, qty)
                     end
                 end
             },
@@ -546,6 +744,7 @@ end)
 AddEventHandler('onResourceStop', function(resourceName)
     if resourceName == GetCurrentResourceName() then
         DeleteBlackMarketPed()
+        DeletePurchaseProp()
 
         if disguiseActive then
             TriggerServerEvent('blackmarket:server:setDisguise', false)

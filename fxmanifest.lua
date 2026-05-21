@@ -21,6 +21,7 @@ shared_scripts {
 }
 
 client_scripts {
+    'client/props.lua',
     'client/blackmarket.lua',
     'client/trading.lua',
     'client/dispatch.lua',
@@ -36,3 +37,9 @@ server_scripts {
     'server/trading.lua',
     'server/main.lua'
 }
+
+files {
+    'stream/bm-prop.ytyp'
+}
+
+data_file 'DLC_ITYP_REQUEST' 'stream/bm-prop.ytyp'

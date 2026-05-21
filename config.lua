@@ -32,6 +32,49 @@ Config.BlackMarket = {
     }
 }
 
+
+-- PROP SYSTEM
+
+
+Config.Props = {
+    enabled = true,
+    loadTimeout = 5000,
+    progress = {
+        enabled = true,
+        duration = 900,
+        label = 'Setting up the drop...'
+    },
+    shopCrate = {
+        enabled = true,
+        model = 'bm-wooden-crate',
+        forwardOffset = 0.65,
+        sideOffset = 1.05,
+        removeDistance = 8.0
+    },
+    purchase = {
+        enabled = true,
+        duration = 2500,
+        label = 'Sealing the deal...',
+        forwardOffset = 0.95,
+        sideOffset = -0.45,
+        weaponModel = 'bm-weapon-briefcase',
+        stashModel = 'bm-metal_stash',
+        stashCategories = {
+            drugs = true,
+            stolen = true,
+            contraband = true
+        }
+    },
+    tradeBag = {
+        enabled = true,
+        models = { 'bm-duffbag' },
+        bone = 57005, -- SKEL_R_Hand
+        offset = vector3(0.15, 0.03, -0.02),
+        rotation = vector3(-90.0, 0.0, 0.0),
+        dropDuration = 1200
+    }
+}
+
 -- =============================================================================
 -- DEALER SCHEDULE
 -- =============================================================================
@@ -56,59 +99,64 @@ Config.DealerSchedule = {
 -- =============================================================================
 -- DEALER TRUST DIALOGUE
 -- =============================================================================
-
 Config.DealerDialogue = {
     enabled = true,
     showInMainMenu = true,
-    fallbackLine = "Keep it quiet. I do business with people who know how to listen.",
-    noStockLine = "Nothing worth moving right now. Come back after the next restock.",
+    fallbackLine = "Eyes forward. Mouth shut. That is how you walk out of here.",
+    noStockLine = "Shelves are dry. Check back when the heat dies down.",
     levels = {
         {
             minCred = 0,
             lines = {
-                "I do not know you yet. Keep it simple and do not waste my time.",
-                "New face, small steps. Earn trust before asking for anything serious.",
-                "Cash talks, reputation keeps the door open."
+                "Nobody vouched for you. That means you get nothing I cannot afford to lose.",
+                "Fresh face means fresh risk. Buy small, disappear fast.",
+                "I do not do favours for strangers. Pay up or walk.",
+                "You are unknown. Unknown gets the bottom shelf and no questions answered."
             }
         },
         {
             minCred = 10,
             lines = {
-                "You have been around enough. Do not make me regret remembering your name.",
-                "Your name is starting to move quietly. Keep it clean.",
-                "Small trust is still trust. Handle your business properly."
+                "You came back. That already puts you ahead of most.",
+                "Still watching you. But you have not done anything stupid yet.",
+                "Small history is better than none. Do not ruin it.",
+                "I remember faces. Yours is starting to mean something small."
             }
         },
         {
             minCred = 25,
             lines = {
-                "People say you finish what you start. That matters here.",
-                "I can work with you, but heat follows sloppy moves.",
-                "You are not unknown anymore. That can help or hurt."
+                "Word got back to me. You handled that quietly. Good.",
+                "You move without making noise. That is rarer than you think.",
+                "Twenty-five in the streets means you survived something. Respect that.",
+                "I can give you a little more. Do not make it a habit to ask for more than that."
             }
         },
         {
             minCred = 50,
             lines = {
-                "You have earned better access. Do not bring attention to my door.",
-                "Reliable people get better prices. Reliable people also stay quiet.",
-                "I saved a few options for someone with your record."
+                "Half the city does not make it this far without burning someone. You did.",
+                "Better access, better product, same rules. Do not forget the rules.",
+                "You are worth the risk now. That is not a compliment I hand out easy.",
+                "Fifty cred means you know how to keep your mouth shut. Prove I am right."
             }
         },
         {
             minCred = 75,
             lines = {
-                "You are trusted here. That means mistakes cost more.",
-                "Word is you handle pressure. Let us keep it that way.",
-                "High trust opens doors, but it also raises expectations."
+                "People ask about you now. I tell them you are solid. Do not make me a liar.",
+                "You want the good stuff? It is behind the counter. You have earned a look.",
+                "Seventy-five is where loyalty gets tested. Stay clean.",
+                "High trust is a two-edged thing. You fall from here, you fall hard."
             }
         },
         {
             minCred = 90,
             lines = {
-                "You are one of the few I do not need to warn twice.",
-                "Top shelf access, quiet hands, no loose ends.",
-                "You know the rules already. Move smart and leave clean."
+                "There are maybe four people I trust at this level. You know what happened to the other three.",
+                "Top access. No limits. No second chances either.",
+                "You are the kind of quiet that keeps everyone alive. I respect that.",
+                "Say nothing, take what you need, leave no trail. You already know this."
             }
         }
     }

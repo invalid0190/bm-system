@@ -93,6 +93,17 @@ Controls when the dealer is available.
 - `closedMessage`: message shown when dealer is unavailable
 - `timeModifiers`: price and stock changes based on time windows
 
+### `Config.Props`
+
+Controls visual props used during dealer and trading interactions.
+
+- `enabled`: enable or disable all prop visuals
+- `loadTimeout`: max time to wait for a prop model
+- `progress`: ox_lib progress bar settings during prop loading
+- `shopCrate`: wooden crate shown near the dealer when the shop opens
+- `purchase`: category-specific ground props during purchase animation
+- `tradeBag`: duffle bag attached to the player's right hand during P2P trades
+
 ### `Config.DealerDialogue`
 
 Controls the English trust dialogue shown inside the main dealer menu.
@@ -192,6 +203,9 @@ Controls player-to-player trading.
 - Street cred reputation system
 - Reputation-based price discounts
 - English dealer trust dialogue based on street cred
+- Shop crate prop near the dealer when browsing stock
+- Weapon briefcase and metal stash props during purchase animations
+- Duffle bag hand prop during P2P trades with drop cleanup on completion
 - Player-to-player trading with dual confirmation
 - Trade cooldowns to prevent spam
 - Server-side distance validation for purchases, sales, and trades

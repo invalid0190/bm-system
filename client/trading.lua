@@ -3,6 +3,8 @@
 -- =============================================================================
 
 local currentTrade = nil
+local tradeBagProp = nil
+local tradeBagTradeId = nil
 
 -- =============================================================================
 -- UTILITY FUNCTIONS
@@ -17,6 +19,55 @@ local function Notify(title, description, type, duration)
         type = type or 'inform',
         duration = duration or defaultDuration
     })
+end
+
+local function StopTradeBag(drop)
+    if tradeBagProp and DoesEntityExist(tradeBagProp) then
+        local propsConfig = Config.Props or {}
+        local bagConfig = type(propsConfig.tradeBag) == 'table' and propsConfig.tradeBag or {}
+
+        if type(BMPropSystem) == 'table' and type(BMPropSystem.DeleteProp) == 'function' then
+            BMPropSystem.DeleteProp(tradeBagProp, drop == true, bagConfig.dropDuration)
+        else
+            DeleteEntity(tradeBagProp)
+        end
+    end
+
+    tradeBagProp = nil
+    tradeBagTradeId = nil
+end
+
+local function StartTradeBag(tradeId)
+    local propsConfig = Config.Props or {}
+    local bagConfig = type(propsConfig.tradeBag) == 'table' and propsConfig.tradeBag or {}
+
+    if propsConfig.enabled == false
+        or bagConfig.enabled == false
+        or type(BMPropSystem) ~= 'table'
+        or type(BMPropSystem.AttachPropToPed) ~= 'function' then
+        return
+    end
+
+    tradeId = BMInteger(tradeId, 0)
+    if tradeId <= 0 then
+        return
+    end
+
+    if tradeBagProp and DoesEntityExist(tradeBagProp) and tradeBagTradeId == tradeId then
+        return
+    end
+
+    StopTradeBag(false)
+
+    tradeBagProp = BMPropSystem.AttachPropToPed(
+        bagConfig.models or bagConfig.model,
+        PlayerPedId(),
+        bagConfig.bone,
+        bagConfig.offset,
+        bagConfig.rotation,
+        'Loading trade bag...'
+    )
+    tradeBagTradeId = tradeBagProp and tradeId or nil
 end
 
 -- =============================================================================
@@ -105,6 +156,7 @@ function OpenTradeMenu(tradeData)
     end
 
     currentTrade = tradeData
+    StartTradeBag(BMInteger(tradeData.tradeId, 0))
 
     -- Start police check
     if type(StartPoliceCheck) == 'function' then
@@ -272,10 +324,12 @@ function ConfirmTrade(tradeId)
 
     if success then
         Notify('Trading', message or 'Trade confirmed!', 'success')
-        if type(StopPoliceCheck) == 'function' then
-            StopPoliceCheck()
+        if message ~= 'Waiting for partner to confirm.' then
+            if type(StopPoliceCheck) == 'function' then
+                StopPoliceCheck()
+            end
+            currentTrade = nil
         end
-        currentTrade = nil
     else
         local notifyType = message == 'Waiting for partner to confirm.' and 'inform' or 'error'
         Notify('Trading', message or 'Trade failed.', notifyType)
@@ -287,6 +341,7 @@ function CancelTrade(tradeId)
     if type(StopPoliceCheck) == 'function' then
         StopPoliceCheck()
     end
+    StopTradeBag(false)
     currentTrade = nil
     Notify('Trading', 'Trade cancelled.', 'inform')
 end
@@ -344,6 +399,7 @@ RegisterNetEvent('blackmarket:client:tradeComplete', function(message)
     if type(StopPoliceCheck) == 'function' then
         StopPoliceCheck()
     end
+    StopTradeBag(true)
     currentTrade = nil
 end)
 
@@ -352,5 +408,12 @@ RegisterNetEvent('blackmarket:client:tradeCancelled', function(reason)
     if type(StopPoliceCheck) == 'function' then
         StopPoliceCheck()
     end
+    StopTradeBag(false)
     currentTrade = nil
+end)
+
+AddEventHandler('onResourceStop', function(resourceName)
+    if resourceName == GetCurrentResourceName() then
+        StopTradeBag(false)
+    end
 end)
