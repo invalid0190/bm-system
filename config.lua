@@ -5,14 +5,17 @@ Config = {}
 -- =============================================================================
 
 Config.BlackMarket = {
-    -- Secret location coordinates
-    coords = vector4(713.84, -967.71, 30.40, 267.75), -- Hidden La Mesa warehouse back door
+    -- Location Mode: 'random' (rotates between locations list below) or 'static' (stays fixed at coords below)
+    locationMode = 'static',
+
+    -- Secret fallback / static location coordinates
+    coords = vec4(692.94, -1013.27, 22.71, 357.75), -- Hidden La Mesa warehouse back door
     locations = {
-        { label = 'La Mesa warehouse', coords = vector4(713.84, -967.71, 30.40, 267.75) },
-        { label = 'Cypress storage yard', coords = vector4(978.11, -147.02, 74.24, 59.25) },
-        { label = 'Davis back alley', coords = vector4(169.82, -1799.31, 29.31, 321.0) },
-        { label = 'La Puerta scrapyard', coords = vector4(-430.12, -1728.38, 19.78, 252.0) },
-        { label = 'Vespucci service lane', coords = vector4(-1148.24, -1523.49, 10.63, 305.5) }
+        { label = 'La Mesa warehouse', coords = vec4(712.65, -963.73, 30.4, 291.93) },
+        { label = 'Cypress storage yard', coords = vec4(981.74, -147.36, 74.24, 36.47) },
+        { label = 'Davis back alley', coords = vec4(170.4, -1799.05, 29.24, 318.21) },
+        { label = 'La Puerta scrapyard', coords = vec4(-434.17, -1726.86, 18.84, 343.11) },
+        { label = 'Vespucci service lane', coords = vec4(-1143.08, -1518.71, 7.55, 129.94) }
     },
     npcModel = `g_m_m_chicold_01`, -- Gang member model
     targetDistance = 2.5,
@@ -49,6 +52,7 @@ Config.Props = {
         model = 'bm-wooden-crate',
         forwardOffset = 0.65,
         sideOffset = 1.05,
+        zOffset = 0.0,
         removeDistance = 8.0
     },
     purchase = {
@@ -57,6 +61,7 @@ Config.Props = {
         label = 'Sealing the deal...',
         forwardOffset = 0.95,
         sideOffset = -0.45,
+        zOffset = 0.00,
         weaponModel = 'bm-weapon-briefcase',
         stashModel = 'bm-metal_stash',
         stashCategories = {

@@ -19,9 +19,25 @@ local function NormalizeDealerLocation(location, index)
         return nil
     end
 
+    local label = nil
+    if type(location) == 'table' and location.label then
+        label = location.label
+    else
+        -- If it's a raw coordinate, try to find a match in the configured locations list to retrieve its label
+        local marketConfig = Config.BlackMarket or {}
+        local locations = type(marketConfig.locations) == 'table' and marketConfig.locations or {}
+        for _, loc in ipairs(locations) do
+            local locCoords = type(loc) == 'table' and loc.coords or loc
+            if locCoords and math.abs(locCoords.x - coords.x) < 0.1 and math.abs(locCoords.y - coords.y) < 0.1 then
+                label = type(loc) == 'table' and loc.label or nil
+                break
+            end
+        end
+    end
+
     return {
         index = index,
-        label = BMString(type(location) == 'table' and location.label or nil, 'Unknown'),
+        label = BMString(label, 'Static Location'),
         x = BMNumber(coords.x, 0.0),
         y = BMNumber(coords.y, 0.0),
         z = BMNumber(coords.z, 0.0),
@@ -32,6 +48,14 @@ end
 local function GetDealerLocations()
     local marketConfig = Config.BlackMarket or {}
     local locations = {}
+
+    if marketConfig.locationMode == 'static' then
+        local fallback = NormalizeDealerLocation(marketConfig.coords, 1)
+        if fallback then
+            locations[1] = fallback
+        end
+        return locations
+    end
 
     for index, location in ipairs(type(marketConfig.locations) == 'table' and marketConfig.locations or {}) do
         local normalized = NormalizeDealerLocation(location, index)
@@ -244,8 +268,8 @@ end, true)
 
 CreateThread(function()
     math.randomseed(os.time())
+    SelectDealerLocation(true) -- Select dealer location immediately to prevent client race conditions
     Wait(2000)
-    SelectDealerLocation(true)
     LastOpenState = IsBlackMarketOpen()
     LastTimeModifierKey = GetTimeModifierKey()
     BroadcastDealerState()

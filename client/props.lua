@@ -76,7 +76,7 @@ local function TrackProp(entity)
 end
 
 -- Creates a local ground prop and places it properly on the nearest surface.
-function BMPropSystem.CreateGroundProp(modelNames, coords, heading, label)
+function BMPropSystem.CreateGroundProp(modelNames, coords, heading, label, zOffset)
     if not coords then
         return nil
     end
@@ -96,6 +96,12 @@ function BMPropSystem.CreateGroundProp(modelNames, coords, heading, label)
     SetEntityAsMissionEntity(entity, true, true)
     SetEntityHeading(entity, BMNumber(heading, 0.0))
     PlaceObjectOnGroundProperly(entity)
+
+    if zOffset and zOffset ~= 0.0 then
+        local currentCoords = GetEntityCoords(entity)
+        SetEntityCoords(entity, currentCoords.x, currentCoords.y, currentCoords.z + BMNumber(zOffset, 0.0), false, false, false, false)
+    end
+
     FreezeEntityPosition(entity, true)
     TrackProp(entity)
     SetModelAsNoLongerNeeded(modelHash)

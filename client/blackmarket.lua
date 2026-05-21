@@ -84,19 +84,7 @@ end
 
 local function GetSafeSpawnCoords(coords, attempts)
     RequestCollisionAtCoord(coords.x, coords.y, coords.z)
-
-    local spawnZ = coords.z
-    for _ = 1, BMInteger(attempts, 25) do
-        local foundGround, groundZ = GetGroundZFor_3dCoord(coords.x, coords.y, coords.z + 2.0, false)
-        if foundGround then
-            spawnZ = groundZ
-            break
-        end
-
-        Wait(100)
-    end
-
-    return coords.x, coords.y, spawnZ, coords.w or 0.0
+    return coords.x, coords.y, coords.z, coords.w or 0.0
 end
 
 local function DeleteBlackMarketPed()
@@ -118,6 +106,39 @@ local function DeleteBlackMarketPed()
     blackMarketTargetAdded = false
 end
 
+local function GetFallbackDealerLocation()
+    local marketConfig = Config.BlackMarket or {}
+    local locations = marketConfig.locations
+    
+    if marketConfig.locationMode ~= 'static' and type(locations) == 'table' and #locations > 0 then
+        local randIndex = math.random(1, #locations)
+        local loc = locations[randIndex]
+        local coords = loc.coords or loc
+        return {
+            index = randIndex,
+            label = BMString(loc.label, 'Fallback dealer'),
+            x = coords.x,
+            y = coords.y,
+            z = coords.z,
+            w = coords.w or 0.0
+        }
+    end
+
+    local fallback = marketConfig.coords
+    if fallback then
+        return {
+            index = 1,
+            label = 'Fallback dealer',
+            x = fallback.x,
+            y = fallback.y,
+            z = fallback.z,
+            w = fallback.w or 0.0
+        }
+    end
+
+    return nil
+end
+
 local function RefreshDealerState()
     local previousLocation = dealerState and dealerState.location or nil
     local ok, state = pcall(function()
@@ -125,17 +146,10 @@ local function RefreshDealerState()
     end)
 
     if not ok or type(state) ~= 'table' then
-        local fallback = Config.BlackMarket and Config.BlackMarket.coords
+        local fallbackLoc = GetFallbackDealerLocation()
         state = {
             open = true,
-            location = fallback and {
-                index = 1,
-                label = 'Fallback dealer',
-                x = fallback.x,
-                y = fallback.y,
-                z = fallback.z,
-                w = fallback.w
-            } or nil,
+            location = fallbackLoc,
             closedMessage = 'Dealer is not available right now.'
         }
     end
@@ -268,7 +282,7 @@ local function SpawnShopCrate()
         return
     end
 
-    shopCrate = BMPropSystem.CreateGroundProp(crateConfig.model, coords, heading, 'Loading shop crate...')
+    shopCrate = BMPropSystem.CreateGroundProp(crateConfig.model, coords, heading, 'Loading shop crate...', BMNumber(crateConfig.zOffset, 0.0))
     StartShopCrateMonitor()
 end
 
@@ -312,7 +326,7 @@ local function SpawnPurchaseProp(category)
         return
     end
 
-    purchaseProp = BMPropSystem.CreateGroundProp(model, coords, heading, 'Loading purchase prop...')
+    purchaseProp = BMPropSystem.CreateGroundProp(model, coords, heading, 'Loading purchase prop...', BMNumber(purchaseConfig.zOffset, 0.0))
 end
 
 local function PlayPurchaseAnimation(duration)
@@ -415,7 +429,15 @@ local function CreateBlackMarketPed()
     SetPedCanRagdoll(blackMarketPed, false)
     SetEntityHeading(blackMarketPed, heading)
     SetEntityCoordsNoOffset(blackMarketPed, x, y, z, false, false, false)
-    FreezeEntityPosition(blackMarketPed, true)
+
+    -- Let the ped settle on the ground for 200ms before freezing
+    local tempPed = blackMarketPed
+    CreateThread(function()
+        Wait(200)
+        if tempPed and DoesEntityExist(tempPed) then
+            FreezeEntityPosition(tempPed, true)
+        end
+    end)
 
     local alpha = BMInteger(npcSettings.alpha, 255)
     if alpha >= 0 and alpha < 255 then
@@ -697,30 +719,50 @@ RegisterNetEvent('blackmarket:client:dealerStateChanged', function(state)
     if not state.open or not state.location or not IsSameDealerLocation(previousLocation, state.location) then
         DeleteBlackMarketPed()
     end
-
-    if state.open and state.location then
-        CreateBlackMarketPed()
-    end
 end)
 
 -- =============================================================================
 -- INITIALIZATION
 -- =============================================================================
 
+-- Periodically refresh the dealer's state from the server
 CreateThread(function()
     Wait(1000)
-    RefreshDealerState()
-    CreateBlackMarketPed()
-
     while true do
+        RefreshDealerState()
         Wait(15000)
-        local state = RefreshDealerState()
+    end
+end)
 
-        if state.open and state.location and (not blackMarketPed or not DoesEntityExist(blackMarketPed)) then
-            blackMarketPed = nil
-            blackMarketTargetAdded = false
-            CreateBlackMarketPed()
+-- Proximity-based spawning/despawning of the dealer NPC
+CreateThread(function()
+    Wait(2000)
+    while true do
+        local state = dealerState
+        local location = state and state.open and state.location or nil
+
+        if location then
+            local playerCoords = GetEntityCoords(PlayerPedId())
+            local dist = #(playerCoords - vector3(location.x, location.y, location.z))
+
+            if dist <= 120.0 then
+                if not blackMarketPed or not DoesEntityExist(blackMarketPed) then
+                    blackMarketPed = nil
+                    blackMarketTargetAdded = false
+                    CreateBlackMarketPed()
+                end
+            else
+                if blackMarketPed and DoesEntityExist(blackMarketPed) then
+                    DeleteBlackMarketPed()
+                end
+            end
+        else
+            if blackMarketPed and DoesEntityExist(blackMarketPed) then
+                DeleteBlackMarketPed()
+            end
         end
+
+        Wait(2000)
     end
 end)
 

@@ -14,7 +14,15 @@ local function GetBlackMarketCoords()
         if coords then return coords end
     end
 
-    local fallback = Config.BlackMarket and Config.BlackMarket.coords
+    local marketConfig = Config.BlackMarket or {}
+    local locations = marketConfig.locations
+    
+    if marketConfig.locationMode ~= 'static' and type(locations) == 'table' and #locations > 0 then
+        local fallback = locations[1].coords or locations[1]
+        return vector3(fallback.x, fallback.y, fallback.z)
+    end
+
+    local fallback = marketConfig.coords
     if not fallback then return nil end
 
     return vector3(fallback.x, fallback.y, fallback.z)
